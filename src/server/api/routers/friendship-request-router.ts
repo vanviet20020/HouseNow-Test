@@ -117,6 +117,37 @@ export const friendshipRequestRouter = router({
          *  - https://kysely-org.github.io/kysely/classes/Kysely.html#insertInto
          *  - https://kysely-org.github.io/kysely/classes/Kysely.html#updateTable
          */
+
+        await t
+          .updateTable('friendships')
+          .set({ status: FriendshipStatusSchema.Values['accepted'] })
+          .where('userId', '=', input.friendUserId)
+          .where('friendUserId', '=', ctx.session.userId)
+          .execute()
+
+        const reciprocalRequest = await t
+          .selectFrom('friendships')
+          .where('userId', '=', ctx.session.userId)
+          .where('friendUserId', '=', input.friendUserId)
+          .select('id')
+          .executeTakeFirst()
+
+        if (reciprocalRequest) {
+          await t
+            .updateTable('friendships')
+            .set({ status: FriendshipStatusSchema.Values['accepted'] })
+            .where('id', '=', reciprocalRequest.id)
+            .execute()
+        } else {
+          await t
+            .insertInto('friendships')
+            .values({
+              userId: ctx.session.userId,
+              friendUserId: input.friendUserId,
+              status: FriendshipStatusSchema.Values['accepted'],
+            })
+            .execute()
+        }
       })
     }),
 
