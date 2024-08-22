@@ -79,6 +79,23 @@ export const friendshipRequestRouter = router({
        * scenario for Question 3
        *  - Run `yarn test` to verify your answer
        */
+
+      const existingRequest = await ctx.db
+        .selectFrom('friendships')
+        .where('userId', '=', ctx.session.userId)
+        .where('friendUserId', '=', input.friendUserId)
+        .where('status', '=', FriendshipStatusSchema.Values['declined'])
+        .select('id')
+        .executeTakeFirst()
+
+      if (existingRequest) {
+        return ctx.db
+          .updateTable('friendships')
+          .set({ status: FriendshipStatusSchema.Values['requested'] })
+          .where('id', '=', existingRequest.id)
+          .execute()
+      }
+
       return ctx.db
         .insertInto('friendships')
         .values({
