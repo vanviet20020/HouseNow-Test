@@ -1,4 +1,7 @@
 import type { Database } from '@/server/db'
+import type { OperandValueExpressionOrList } from 'kysely'
+import type { DB } from '@/server/db/types'
+import type { Friendship } from '@prisma/client'
 
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
@@ -11,9 +14,6 @@ import {
   CountSchema,
   IdSchema,
 } from '@/utils/server/base-schemas'
-import { DB } from '@/server/db/types'
-import { Friendship } from '@prisma/client'
-import { OperandValueExpressionOrList } from 'kysely'
 
 export const myFriendRouter = router({
   getById: protectedProcedure
