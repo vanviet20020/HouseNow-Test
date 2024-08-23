@@ -11,6 +11,9 @@ import {
   CountSchema,
   IdSchema,
 } from '@/utils/server/base-schemas'
+import { DB } from '@/server/db/types'
+import { Friendship } from '@prisma/client'
+import { OperandValueExpressionOrList } from 'kysely'
 
 export const myFriendRouter = router({
   getById: protectedProcedure
@@ -47,6 +50,14 @@ export const myFriendRouter = router({
             'userTotalFriendCount.userId',
             'friends.id'
           )
+          .leftJoin(
+            userMutualFriendCount(
+              conn,
+              ctx.session.userId,
+              input.friendUserId
+            ).as('mutualFriendCount'),
+            (join) => join.onTrue()
+          )
           .where('friendships.userId', '=', ctx.session.userId)
           .where('friendships.friendUserId', '=', input.friendUserId)
           .where(
@@ -59,6 +70,7 @@ export const myFriendRouter = router({
             'friends.fullName',
             'friends.phoneNumber',
             'totalFriendCount',
+            'mutualFriendCount',
           ])
           .executeTakeFirstOrThrow(() => new TRPCError({ code: 'NOT_FOUND' }))
           .then(
@@ -83,4 +95,31 @@ const userTotalFriendCount = (db: Database) => {
       eb.fn.count('friendships.friendUserId').as('totalFriendCount'),
     ])
     .groupBy('friendships.userId')
+}
+
+const userMutualFriendCount = (
+  db: Database,
+  userId: OperandValueExpressionOrList<
+    DB & { f1: Friendship } & { f2: Friendship },
+    'f1' | 'f2',
+    'f1.userId'
+  >,
+  friendUserId: OperandValueExpressionOrList<
+    DB & { f1: Friendship } & { f2: Friendship },
+    'f1' | 'f2',
+    'f2.userId'
+  >
+) => {
+  return db
+    .selectFrom('friendships as f1')
+    .innerJoin('friendships as f2', 'f1.friendUserId', 'f2.friendUserId')
+    .where('f1.userId', '=', userId)
+    .where('f2.userId', '=', friendUserId)
+    .where('f1.status', '=', FriendshipStatusSchema.Values['accepted'])
+    .where('f2.status', '=', FriendshipStatusSchema.Values['accepted'])
+    .select((eb) => [
+      'f1.userId',
+      eb.fn.count('f1.friendUserId').as('mutualFriendCount'),
+    ])
+    .groupBy('f1.userId')
 }
