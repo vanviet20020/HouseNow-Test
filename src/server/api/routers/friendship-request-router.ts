@@ -110,7 +110,7 @@ export const friendshipRequestRouter = router({
     .use(canAnswerFriendshipRequest)
     .input(AnswerFriendshipRequestInputSchema)
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.transaction().execute(async (t) => {
+      return ctx.db.transaction().execute(async (t) => {
         /**
          * Question 1: Implement api to accept a friendship request
          *
@@ -150,13 +150,13 @@ export const friendshipRequestRouter = router({
           .executeTakeFirst()
 
         if (reciprocalRequest) {
-          await t
+          return t
             .updateTable('friendships')
             .set({ status: FriendshipStatusSchema.Values['accepted'] })
             .where('id', '=', reciprocalRequest.id)
             .execute()
         } else {
-          await t
+          return t
             .insertInto('friendships')
             .values({
               userId: ctx.session.userId,
@@ -186,7 +186,7 @@ export const friendshipRequestRouter = router({
        *  - https://vitest.dev/api/#test-skip
        */
 
-      await ctx.db
+      return ctx.db
         .updateTable('friendships')
         .set({ status: FriendshipStatusSchema.Values['declined'] })
         .where('userId', '=', input.friendUserId)
